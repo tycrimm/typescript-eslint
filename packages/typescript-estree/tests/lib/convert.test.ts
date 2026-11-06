@@ -544,4 +544,59 @@ describe('convert', () => {
       expect(templateElement.value.cooked).toBe(`\\uXXXX`);
     });
   });
+  describe('token-based ranges in multi-statement files', () => {
+    const code = [
+      'const a = 1;',
+      'export const b: Array<number> = [];',
+      'export default class C<T> {}',
+      'export namespace A.B { export const c = 1; }',
+      'function f<T>(x: Map<string, T>): T { return g<T>(x); }',
+    ].join('\n');
+    const convert = (): TSESTree.Program =>
+      new Converter(convertCode(code)).convertProgram();
+    const text = (node: TSESTree.Node | undefined): string | undefined =>
+      node && code.slice(...node.range);
+
+    it('sets export declaration ranges', () => {
+      const [, exportNamed, exportDefault, exportNamespace] = convert()
+        .body as [
+        TSESTree.VariableDeclaration,
+        TSESTree.ExportNamedDeclaration,
+        TSESTree.ExportDefaultDeclaration,
+        TSESTree.ExportNamedDeclaration,
+      ];
+
+      expect(text(exportNamed)).toBe('export const b: Array<number> = [];');
+      expect(text(exportNamed.declaration!)).toBe(
+        'const b: Array<number> = [];',
+      );
+      expect(text(exportDefault)).toBe('export default class C<T> {}');
+      expect(text(exportDefault.declaration)).toBe('class C<T> {}');
+      expect(text(exportNamespace.declaration!)).toBe(
+        'namespace A.B { export const c = 1; }',
+      );
+    });
+
+    it('sets type parameter and type argument ranges', () => {
+      const program = convert();
+      const exportDefault = program
+        .body[2] as TSESTree.ExportDefaultDeclaration;
+      const fn = program.body[4] as TSESTree.FunctionDeclaration;
+      const param = fn.params[0] as TSESTree.Identifier;
+      const map = param.typeAnnotation!
+        .typeAnnotation as TSESTree.TSTypeReference;
+      const call = (fn.body.body[0] as TSESTree.ReturnStatement)
+        .argument as TSESTree.CallExpression;
+
+      expect(
+        text(
+          (exportDefault.declaration as TSESTree.ClassDeclaration)
+            .typeParameters,
+        ),
+      ).toBe('<T>');
+      expect(text(fn.typeParameters)).toBe('<T>');
+      expect(text(map.typeArguments)).toBe('<string, T>');
+      expect(text(call.typeArguments)).toBe('<T>');
+    });
+  });
 });

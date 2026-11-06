@@ -376,7 +376,7 @@ export class Converter {
       return undefined;
     }
 
-    const greaterThanToken = findNextToken(typeArguments, this.ast, this.ast)!;
+    const greaterThanToken = findNextToken(typeArguments, node, this.ast)!;
     const range: TSESTree.Range = [typeArguments.pos - 1, greaterThanToken.end];
 
     if (typeArguments.length === 0) {
@@ -421,7 +421,7 @@ export class Converter {
       return undefined;
     }
 
-    const greaterThanToken = findNextToken(typeParameters, this.ast, this.ast)!;
+    const greaterThanToken = findNextToken(typeParameters, node, this.ast)!;
     const range: TSESTree.Range = [
       typeParameters.pos - 1,
       greaterThanToken.end,
@@ -3034,8 +3034,8 @@ export class Converter {
         nextModifier?.kind === SyntaxKind.DefaultKeyword;
 
       const varToken = declarationIsDefault
-        ? findNextToken(nextModifier, this.ast, this.ast)
-        : findNextToken(exportKeyword, this.ast, this.ast);
+        ? findNextToken(nextModifier, nextModifier.parent, this.ast)
+        : findNextToken(exportKeyword, exportKeyword.parent, this.ast);
 
       result.range[0] = varToken!.getStart(this.ast);
       result.loc = getLocFor(result.range, this.ast);
